@@ -1,4 +1,5 @@
-<img width="934" height="432" alt="image" src="https://github.com/user-attachments/assets/e57ca788-577f-4dc9-a2c3-142df226cce8" /># Travel Journal
+<img width="934" height="432" alt="image" src="https://github.com/user-attachments/assets/e57ca788-577f-4dc9-a2c3-142df226cce8" />
+# Travel Journal
 
 A website documenting my travels. Built in HTML and CSS.
 
