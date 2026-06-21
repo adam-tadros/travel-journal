@@ -10,5 +10,5 @@ This is a personal travel journal: a photo-driven journal of places I've been, k
 - `gallery.html` — photo gallery
 - `images/` — photography from the trips
 
-<img width="934" height="432" alt="image" src="https://github.com/user-attachments/assets/e57ca788-577f-4dc9-a2c3-142df226cce8" />
 <img width="932" height="431" alt="image" src="https://github.com/user-attachments/assets/90d2eae7-6c62-420c-951e-d778411e079d" />
+<img width="934" height="432" alt="image" src="https://github.com/user-attachments/assets/e57ca788-577f-4dc9-a2c3-142df226cce8" />
