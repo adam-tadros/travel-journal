@@ -1,8 +1,6 @@
-# Travel Journal
+<img width="934" height="432" alt="image" src="https://github.com/user-attachments/assets/e57ca788-577f-4dc9-a2c3-142df226cce8" /># Travel Journal
 
-A simple, dependency-free static website documenting my travels — built with plain HTML and CSS, no frameworks and no build step. Fast to load, easy to host anywhere.
-
-🌐 **Live site:** [adamtadros.dev](https://adamtadros.dev)
+A website documenting my travels. Built in HTML and CSS.
 
 ## About
 
@@ -12,23 +10,3 @@ This is a personal travel journal: a photo-driven journal of places I've been, k
 - `gallery.html` — photo gallery
 - `images/` — photography from the trips
 
-## Why plain HTML?
-
-No build tooling, no framework, no JavaScript bundle to ship. For a content site like this, hand-written semantic HTML keeps it fast, portable, and simple to maintain — and it's a good reminder that you don't always need a framework.
-
-## Running locally
-
-Because it's just static files, you can open `index.html` directly in a browser, or serve the folder:
-
-```bash
-python3 -m http.server 8000
-# then visit http://localhost:8000
-```
-
-## Deployment
-
-The site is deployed via Firebase Hosting.
-
-```bash
-firebase deploy
-```
