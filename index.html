@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>travel journal — Adam Tadros</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  :root{
+    --paper:#fbf8f1;
+    --ink:#1a1814;
+    --muted:#8a8177;
+    --mark:#b89968;
+    --rule:#e3dccd;
+    --tile:#eae2d0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'EB Garamond', Georgia, serif;
+    color:var(--ink);
+    background:var(--paper);
+    font-size:19px;
+    line-height:1.65;
+    font-weight:400;
+  }
+  a{color:inherit}
+
+  nav.top{
+    position:sticky;top:0;z-index:100;
+    background:rgba(251,248,241,0.92);
+    backdrop-filter:blur(6px);
+    padding:14px 40px;
+    display:flex;justify-content:space-between;align-items:baseline;
+    border-bottom:1px solid var(--rule);
+    font-size:14px;
+  }
+  nav.top a{
+    text-decoration:none;color:var(--muted);
+    margin-left:22px;font-style:italic;
+  }
+  nav.top a:hover{color:var(--ink)}
+  nav.top .name{color:var(--ink)}
+
+  main{
+    max-width:680px;
+    margin:0 auto;
+    padding:80px 30px 120px;
+  }
+
+  .cover{
+    padding:40px 0 80px;
+    border-bottom:1px solid var(--rule);
+    margin-bottom:60px;
+  }
+  .cover h1{
+    font-size:38px;
+    font-weight:400;
+    line-height:1.15;
+    letter-spacing:-0.5px;
+    margin-bottom:16px;
+  }
+  .cover .by{
+    color:var(--muted);
+    font-size:17px;
+    font-style:italic;
+  }
+
+  .section-label{
+    font-size:13px;
+    font-style:italic;
+    color:var(--muted);
+    margin-bottom:10px;
+    letter-spacing:0.2px;
+  }
+
+  .map-block{ margin:20px 0 80px; }
+  #map{
+    height:340px;
+    width:100%;
+    border:1px solid var(--rule);
+    margin-top:24px;
+  }
+
+  .place{
+    margin-top:80px;
+    padding-top:60px;
+    border-top:1px solid var(--rule);
+  }
+  .place:first-of-type{border-top:none;padding-top:0;margin-top:40px}
+  .place-name{
+    font-size:22px;
+    font-weight:400;
+    font-style:italic;
+    color:var(--ink);
+    margin-bottom:8px;
+    letter-spacing:0.3px;
+  }
+
+  .entry{ margin:40px 0; }
+  .entry-head{
+    font-size:14px;
+    color:var(--muted);
+    margin-bottom:10px;
+    font-style:italic;
+  }
+  .entry-body{ font-size:19px; line-height:1.7; }
+  .entry-body p{margin-bottom:14px}
+  .entry-body em{font-style:italic}
+
+  /* ---- media: standalone photos + carousels are both ~20% smaller than the column */
+  .entry-media{
+    max-width:500px;
+    margin:30px auto;
+  }
+  .entry-media figcaption{
+    margin-top:8px;
+    font-size:14px;
+    font-style:italic;
+    color:var(--muted);
+    text-align:center;
+    line-height:1.4;
+  }
+
+  /* standalone photo */
+  .photo img{
+    display:block;
+    width:100%;
+    height:auto;
+    border:1px solid var(--rule);
+    background:var(--tile);
+    cursor:zoom-in;
+    transition:transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .photo img:hover{
+    transform:translateY(-2px);
+    box-shadow:0 6px 18px rgba(26,24,20,0.08);
+  }
+
+  /* carousel */
+  .carousel{
+    position:relative;
+  }
+  .carousel .track{
+    position:relative;
+    width:100%;
+    overflow:hidden;
+    border:1px solid var(--rule);
+    background:var(--tile);
+  }
+  .carousel .slide{
+    display:none;
+    width:100%;
+  }
+  .carousel .slide.active{display:block}
+  .carousel .slide img{
+    display:block;
+    width:100%;
+    height:auto;
+    cursor:zoom-in;
+  }
+  .carousel .nav{
+    position:absolute;
+    top:50%;
+    transform:translateY(-50%);
+    width:36px;height:36px;
+    background:rgba(251,248,241,0.85);
+    border:1px solid var(--rule);
+    border-radius:50%;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'EB Garamond',Georgia,serif;
+    font-size:18px;
+    color:var(--ink);
+    user-select:none;
+    transition:background 0.15s;
+    padding:0;
+  }
+  .carousel .nav:hover{background:var(--paper)}
+  .carousel .prev{left:10px}
+  .carousel .next{right:10px}
+  .carousel .dots{
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    margin-top:12px;
+  }
+  .carousel .dot{
+    width:7px;height:7px;
+    border-radius:50%;
+    background:transparent;
+    border:1px solid var(--muted);
+    cursor:pointer;
+    padding:0;
+  }
+  .carousel .dot.active{background:var(--muted)}
+
+  /* lightbox */
+  .lightbox{
+    position:fixed;inset:0;
+    background:rgba(26,24,20,0.92);
+    display:none;
+    align-items:center;justify-content:center;
+    z-index:1000;
+    padding:40px;
+    cursor:zoom-out;
+  }
+  .lightbox.open{display:flex}
+  .lightbox .stage{
+    max-width:100%;
+    max-height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+  }
+  .lightbox img{
+    max-width:100%;
+    max-height:calc(100vh - 160px);
+    object-fit:contain;
+    box-shadow:0 10px 40px rgba(0,0,0,0.4);
+  }
+  .lightbox .caption{
+    color:#fbf8f1;
+    font-size:15px;
+    font-style:italic;
+    opacity:0.85;
+    text-align:center;
+    max-width:80ch;
+  }
+  .lightbox .close{
+    position:absolute;top:20px;right:28px;
+    font-size:28px;color:#fbf8f1;
+    cursor:pointer;font-style:italic;
+    opacity:0.7;
+  }
+  .lightbox .close:hover{opacity:1}
+
+  footer{
+    margin-top:120px;
+    padding-top:40px;
+    border-top:1px solid var(--rule);
+    text-align:center;
+    font-size:17px;
+    font-style:italic;
+    color:var(--muted);
+  }
+
+  @media (max-width:700px){
+    nav.top{padding:12px 20px;font-size:13px}
+    nav.top a{margin-left:16px}
+    main{padding:50px 24px 80px}
+    .cover h1{font-size:30px}
+    .entry-body{font-size:18px}
+    .entry-media{max-width:100%}
+    .carousel .nav{width:30px;height:30px;font-size:15px}
+  }
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <span class="name">Adam Tadros</span>
+  <span>
+    <a href="#map-section">map</a>
+    <a href="#entries">entries</a>
+    <a href="gallery.html">gallery</a>
+  </span>
+</nav>
+
+<main>
+
+  <section class="cover">
+    <h1>travel journal</h1>
+    <div class="by" style="margin-top:20px">Adam Tadros</div>
+  </section>
+
+  <section class="map-block" id="map-section">
+    <div class="section-label">map</div>
+    <div id="map"></div>
+  </section>
+
+  <section id="entries">
+    <div class="section-label">entries</div>
+
+    <!-- ============ LOS ALTOS ============ -->
+    <div class="place">
+      <div class="place-name">Los Altos, CA</div>
+
+      <div class="entry">
+        <div class="entry-head">August 19 — Day 2</div>
+        <div class="entry-body">
+          <p>Dear diary,</p>
+          <p>Today I visited my cousin's houses and caught up with all my aunts and uncles. It was a lot of fun, except half way through I sneezed a surprising amount of phlegm into my shirt and then had to find various ways to avoid hugging people.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">August 22 — Day 5</div>
+        <div class="entry-body">
+          <p>Dear Diary,</p>
+          <p>Today was a great day that took a sharp turn over the course of about 30 minutes. During a pickleball match I smacked myself in the face with my own paddle and bit a large chunk out of my lip. Then I proceeded to sit on my sunglasses, and then order a fucking lemonade.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ GRAND CANYON ============ -->
+    <div class="place">
+      <div class="place-name">Grand Canyon</div>
+
+      <div class="entry-media">
+        <div class="carousel" data-carousel>
+          <div class="track">
+            <div class="slide active"><img data-src="images/1.jpg" src="images/1.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/2.jpg" src="images/2.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/3.jpg" src="images/3.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/4.jpg" src="images/4.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/5.jpg" src="images/5.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/6.jpg" src="images/6.jpg" alt=""></div>
+          </div>
+          <button class="nav prev" aria-label="previous">‹</button>
+          <button class="nav next" aria-label="next">›</button>
+          <div class="dots"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ BOULDER ============ -->
+    <div class="place">
+      <div class="place-name">Boulder, CO</div>
+
+      <div class="entry">
+        <div class="entry-head">August 24 — Day 1</div>
+        <div class="entry-body">
+          <p>Dear diary,</p>
+          <p>It has come to my attention that there are some incriminating photos of me out there titled "the cream pie incident". I just want it to be known that it's not as bad as it sounds…</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">August 26 — Day 3</div>
+        <div class="entry-body">
+          <p>Dear diary,</p>
+          <p>I once patronized Cosmos Pizza with such regularity that they would put my slices in the oven as soon as they saw me, before I even walked in the door. Today was $1 slice day, and despite my wavering intestinal fortitude, I've opted to consume nothing but pizza and the occasional banana. A devastating bowel movement is inevitable.</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <div class="carousel" data-carousel>
+          <div class="track">
+            <div class="slide active"><img data-src="images/7.jpg" src="images/7.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/8.jpg" src="images/8.jpg" alt=""></div>
+          </div>
+          <button class="nav prev" aria-label="previous">‹</button>
+          <button class="nav next" aria-label="next">›</button>
+          <div class="dots"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ OLYMPIC NATIONAL PARK / PORT TOWNSEND ============ -->
+    <div class="place">
+      <div class="place-name">Olympic National Park, WA</div>
+
+      <div class="entry">
+        <div class="entry-head">August 28 — Day 1</div>
+        <div class="entry-body">
+          <p>Dear diary,</p>
+          <p>Due to our disastrous navigational ineptitude, Nathan and I have found ourselves stuck at a bus stop in the middle of nowhere.</p>
+          <p>Tracy [Nathan's mom] is roasting us in the group chat, morale is low, so in a last ditch effort to save face, we double down. We locate a gas station and get our hands on a 12 pack of 8% abv White Claw Surges.</p>
+          <p>Cranberry goes down smooth as I regale Nathan with stories of the Grand Canyon. Lime is empty before we know it as we watch TikToks about Mars. Blood orange is tough: Nathan calls his girlfriend and then zones out hard. Blackberry gets dicey, I get up to go pee, and barely make it back. The Cheetos start tasting really good.</p>
+          <p>By the time help arrives (thank you Aster) I'm feeling absolutely blitzed. But I don't realize how blitzed until we start driving down this road that to me appears to be spinning. My water bottle is safely stowed in the trunk.</p>
+          <p>After a 45 minute drive I run into a store and take perhaps the yellowest piss that's ever been taken and decide I need some electrolytes. We get back into the car and I crack into my drink. It turns out to be coconut water, I hate coconut water, hydration levels do not change.</p>
+          <p>We end up at Tracy's house, I meet a bunch of new people, hold it together in a conversation and then violently throw up in her bathroom. I go to bed while everything is still spinning.</p>
+          <p>The next morning I'm up at 4:00am, I try to go back to bed but eventually commit to starting the day. Tracy is up and recommends I walk to the beach and watch the sunrise. I watch the sun rise in a foggy sky, while sea otter pups play nearby in the surf. I'd like to thank White Claw Surges for making this moment possible.</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <div class="carousel" data-carousel>
+          <div class="track">
+            <div class="slide active"><img data-src="images/9.jpg" src="images/9.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/10.jpg" src="images/10.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/11.jpg" src="images/11.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/12.jpg" src="images/12.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/13.jpg" src="images/13.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/14.jpg" src="images/14.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/15.jpg" src="images/15.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/16.jpg" src="images/16.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/17.jpg" src="images/17.jpg" alt=""></div>
+          </div>
+          <button class="nav prev" aria-label="previous">‹</button>
+          <button class="nav next" aria-label="next">›</button>
+          <div class="dots"></div>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">August 30 — Day 3</div>
+        <div class="entry-body">
+          <p>Dear diary,</p>
+          <p>I'm currently leading the Sufferfest 2025 adversity chart after sleeping outside on the deck last night and getting properly rained on.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">August 31 — Day 4</div>
+        <div class="entry-body">
+          <p>Dear Diary,</p>
+          <p>Today Nathan's mom smoked weed for what seemed like (but was not) her first time. She smoked a good amount, started vigorously coughing, then did a strange performative tongue flourish to communicate her disdain for the taste.</p>
+          <p>She says something about not feeling high and then goes silent for maybe 5 minutes. Then out of nowhere she looks up at one of her sons who was absolutely gorging on some bread and, with watery eyes, says "why aren't you talking to me?". It was so earnest and out of the blue; irrefutable confirmation that she was indeed stoney baloneyed. We all had a good laugh, she took another hit, and we made Luke talk to his mom.</p>
+          <p>A while later she announces "this is so fun, we should do the next sufferfest somewhere abroad".</p>
+          <p>I realized that I have a tendency when I have experiences like this to assume that to everyone else it's routine. But again and again people share how much they value this time and again and again I learn how rare and valuable these moments are. Here we are in the most gorgeous forest and Tracy is surrounded by her family. I'm so glad that Sufferfest has become a tradition that brings her joy, and I'm so glad to be able to share that with her.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">September 1 — Day 5</div>
+        <div class="entry-body">
+          <p>Dear Diary,</p>
+          <p>Today we were back at Tracy's place and I got to meet Marcus's cat. His name was Wally and he loved eating grass. We were all sitting outside and Wally started dry heaving for a full 2 minutes. Half way into it Marcus (completely unbothered) looks at me and goes "thats what happens if you eat grass". I chuckle, and then Marcus lights us a joint.</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <figure class="photo">
+          <img data-src="images/18.jpg" src="images/18.jpg" alt="Wally the dryheaving cat">
+          <figcaption>Wally the dryheaving cat</figcaption>
+        </figure>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">September 2 — Day 6</div>
+        <div class="entry-body">
+          <p>Dear diary,</p>
+          <p>I've made the bold choice to eat a bowl of queso riddled Qdoba before boarding my flight. Things have been fighting their way out of me this whole trip; this seems to be a fitting way to say goodbye.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ LONDON ============ -->
+    <div class="place">
+      <div class="place-name">London</div>
+
+      <div class="entry">
+        <div class="entry-head">September 11 — Day 3</div>
+        <div class="entry-body">
+          <p>Dear Diary,</p>
+          <p>Arriving in London, I was committed to not being jetlagged. Despite my best efforts however, I landed at 7:00AM local time wholly unprepared to face the day. It took all my strength to make it until 4:00pm when I took the worst nap of my life, and woke up 2 hours later feeling like death and believing it was the next day. This continued for a couple more nights, which supplemented with naps worked out fine, but I was really craving the day where I felt fully rested. The day eventually came, but the first night I got good sleep was also the night the <em>weird</em> dreams started.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ PARIS ============ -->
+    <div class="place">
+      <div class="place-name">Paris</div>
+
+      <div class="entry">
+        <div class="entry-head">September 16</div>
+        <div class="entry-body">
+          <p>Dear Diary,</p>
+          <p>Today, I almost made it through ordering croissants in French today before the cashier asked if I wanted a receipt. Then, while biking back to the apartment with said croissants I was smacked in the face by a stray pigeon. Later in the day I went thrift shopping at a store with no dressing room. I was almost caught pantless by an entire sorority.</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <div class="carousel" data-carousel>
+          <div class="track">
+            <div class="slide active"><img data-src="images/19.jpg" src="images/19.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/20.jpg" src="images/20.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/21.jpg" src="images/21.jpg" alt=""></div>
+          </div>
+          <button class="nav prev" aria-label="previous">‹</button>
+          <button class="nav next" aria-label="next">›</button>
+          <div class="dots"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ MOROCCO ============ -->
+    <div class="place">
+      <div class="place-name">Morocco</div>
+
+      <div class="entry">
+        <div class="entry-head">September 19</div>
+        <div class="entry-body">
+          <p>Dear Diary,</p>
+          <p>Tonight we found ourselves on a bus with a bunch of ladies singing their hearts out to some Arabic music. They saw me vibing along and asked me to queue up an American song. I panic and pick Paper Planes by M.I.A. which completely bombs to a now silent car. Perhaps the single most embarrassing moment of my life.</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <div class="carousel" data-carousel>
+          <div class="track">
+            <div class="slide active"><img data-src="images/22.jpg" src="images/22.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/23.jpg" src="images/23.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/24.jpg" src="images/24.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/25.jpg" src="images/25.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/26.jpg" src="images/26.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/27.jpg" src="images/27.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/28.jpg" src="images/28.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/28_5.jpg" src="images/28_5.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/28_55.jpg" src="images/28_55.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/29.jpg" src="images/29.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/29_5.jpg" src="images/29_5.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/30.jpg" src="images/30.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/30_5.jpg" src="images/30_5.jpg" alt=""></div>
+          </div>
+          <button class="nav prev" aria-label="previous">‹</button>
+          <button class="nav next" aria-label="next">›</button>
+          <div class="dots"></div>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">September 26</div>
+        <div class="entry-body">
+          <p>Dear Diary,</p>
+          <p>Today I lost all of my fucking pants. They were all in one bag, now that bag is gone and I have no idea where. I hope the people of Egypt like thighs cause I only got shorts left.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">September 27</div>
+        <div class="entry-body">
+          <p>Dear Diary,</p>
+          <p>Last night we checked into an AirBnb and learned it had <em>no wifi</em> (or internet). At first I was like "no big deal" but being in an internet cafe this morning is like a hit of cocaine straight to the dome. God I love wifi.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">September 29</div>
+        <div class="entry-body">
+          <p>Dear Diary,</p>
+          <p>Today I got a haircut in Morocco. There was such an enormous language barrier but after much trepidation, I google translated 3 requests: 1. Nothing off the top  2. Sides shorter but <em>not too short</em>  3. A picture of Henry Cavill's Mustache. The guy followed none of my requests but it turned out pretty great! I do however look like a frenchman… gross.</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <figure class="photo">
+          <img data-src="images/henry_cavill.webp" src="images/henry_cavill.webp" alt="Henry Cavill's moustache — the haircut I wanted">
+          <figcaption>the haircut I wanted</figcaption>
+        </figure>
+      </div>
+
+      <div class="entry-media">
+        <figure class="photo">
+          <img data-src="images/31_5.jpg" src="images/31_5.jpg" alt="the haircut I got">
+          <figcaption>the haircut I got</figcaption>
+        </figure>
+      </div>
+
+      <div class="entry-media">
+        <div class="carousel" data-carousel>
+          <div class="track">
+            <div class="slide active"><img data-src="images/31.jpg" src="images/31.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/32.jpg" src="images/32.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/33.jpg" src="images/33.jpg" alt=""></div>
+          </div>
+          <button class="nav prev" aria-label="previous">‹</button>
+          <button class="nav next" aria-label="next">›</button>
+          <div class="dots"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ EGYPT ============ -->
+    <div class="place">
+      <div class="place-name">Egypt</div>
+
+      <div class="entry-media">
+        <div class="carousel" data-carousel>
+          <div class="track">
+            <div class="slide active"><img data-src="images/34.jpg" src="images/34.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/35.jpg" src="images/35.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/36.jpg" src="images/36.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/37.jpg" src="images/37.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/38.jpg" src="images/38.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/39.jpg" src="images/39.jpg" alt=""></div>
+          </div>
+          <button class="nav prev" aria-label="previous">‹</button>
+          <button class="nav next" aria-label="next">›</button>
+          <div class="dots"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ EDINBURGH ============ -->
+    <div class="place">
+      <div class="place-name">Edinburgh</div>
+
+      <div class="entry-media">
+        <div class="carousel" data-carousel>
+          <div class="track">
+            <div class="slide active"><img data-src="images/39_5.jpg" src="images/39_5.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/40.jpg" src="images/40.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/41.jpg" src="images/41.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/42.jpg" src="images/42.jpg" alt=""></div>
+          </div>
+          <button class="nav prev" aria-label="previous">‹</button>
+          <button class="nav next" aria-label="next">›</button>
+          <div class="dots"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ CHULILLA ============ -->
+    <div class="place">
+      <div class="place-name">Chulilla, Spain</div>
+
+      <div class="entry">
+        <div class="entry-head">October 22</div>
+        <div class="entry-body">
+          <p>Dear Diary,</p>
+          <p>Imagine your whole team at work was just laid off and the company chugs along like nothing happened. It was like your work amounted to nothing, it was all pointless, you were pointless. That would feel pretty shitty. This is how my pants must have felt.</p>
+          <p>I lost all of my pants about a month ago. All at once. Disaster. But life went on. And not only did life go on, and the pain of having no pants subsided over time, but the pain was never there. There was no moment where the weight of losing all my pants hit me, it was never even a problem. Sure I traveled to Scotland and Ireland and it was cold. And there was an instance where I was cold enough to need to buy a new pant. I bet my old pants felt validated by that. I bet it made them feel a little worthwhile. But now I have one pant, and it's enough. Fuck my 6 pants having ass, that's waaay too many pants. It was honestly more of a burden, carrying around all those pants. They were the heaviest thing I owned. In a sick way, their absence has made my life easier. But you know what's even more fucked up? If I started with fewer pants I could've brought a smaller bag, and so even in the absence of the pants, their mere existence has caused lasting damage to my travels. If I had been stopped by the Ryanair attendants for having too large a bag, that would've been on my pants… wherever they ended up. But good riddance because my bag is light and the Ryanair attendants are inattentive as fuck.</p>
+          <p>RIP my pants. Good riddance. And… I'm sorry your work wasn't valued, I'm partly to blame for not finding a better use for you. And now you look back at your life and see that your existence came at a detriment to your owner. I hope you're in a better place. And I hope whoever stole all my fucking pants, needed you more than me.</p>
+          <p>Sincerely,</p>
+          <p>Adam</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <div class="carousel" data-carousel>
+          <div class="track">
+            <div class="slide active"><img data-src="images/44.jpg" src="images/44.jpg" alt="The Chulilla gang"></div>
+            <div class="slide"><img data-src="images/45.jpg" src="images/45.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/46.jpg" src="images/46.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/47.jpg" src="images/47.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/48.jpg" src="images/48.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/48_5.jpg" src="images/48_5.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/49.jpg" src="images/49.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/50.jpg" src="images/50.jpg" alt=""></div>
+          </div>
+          <button class="nav prev" aria-label="previous">‹</button>
+          <button class="nav next" aria-label="next">›</button>
+          <div class="dots"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ BÉZIERS ============ -->
+    <div class="place">
+      <div class="place-name">Béziers, France</div>
+
+      <div class="entry">
+        <div class="entry-head">October 29</div>
+        <div class="entry-body">
+          <p>Dear Diary,</p>
+          <p>Today I drove up from Valencia to Béziers with Hippolyte. I then played some cards with his family and developed a rivalry with his cousin when I offended her by calling her "young at heart" instead of just "young".</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <figure class="photo">
+          <img data-src="images/51.jpg" src="images/51.jpg" alt="driving up with Hippolyte to Béziers">
+        </figure>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">October 30</div>
+        <div class="entry-body">
+          <p>Dear Diary,</p>
+          <p>I spent the day with Hippolyte. We had a mission of trying French tacos and seeing the town. The tacos were everything I hoped they would be, and we reveled in their decadent density. That night we played cards and I was getting so lucky I fear it may have created a rift in his family.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">October 31</div>
+        <div class="entry-body">
+          <p>Dear Diary,</p>
+          <p>It was hard to say goodbye to Hippolyte. We had grown close over this last week and I would've been happy to spend another with him. I'm excited to start my journey on the Camino which will be kicked off with a long train ride. I read some of my book, which was fantastic, and watched the whole demon slayer season 5 which was a complete waste of time, save for the final episode. I'm excited for the movie, and to start the Camino tomorrow!</p>
+          <p>The last leg of my train got cancelled and got replaced with a bus which I missed because the previous train was late. Apparently the French way to remedy this is to order me a private tesla taxi driver, fully paid for to drive me to my destination. And to top off the night, I check into a hostel and am the only one in my room! Cheapest ensuite ever.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ CAMINO ============ -->
+    <div class="place">
+      <div class="place-name">Camino de Santiago</div>
+
+      <div class="entry">
+        <div class="entry-head">November 11 — Burgos</div>
+        <div class="entry-body">
+          <p>Dear diary,</p>
+          <p>For some reason today, the Camino routed me through the chemical industrial compound of Burgos Spain. I was thoroughly not enjoying the experience until I realized that I had free will. So I took my life into my own hands, and found the most unappealing spot imaginable to eat my tangerine. The smell of the swamp wafted towards the highway as the factories loomed over the horizon, the dusk lighting gave Gotham city and reminded me to hurry to get to the albergue before it closed. But something about the fact that I chose this highlighted the humor of it all. It was a damn good tangerine.</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <div class="carousel" data-carousel>
+          <div class="track">
+            <div class="slide active"><img data-src="images/52.jpg" src="images/52.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/53.jpg" src="images/53.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/54.jpg" src="images/54.jpg" alt=""></div>
+          </div>
+          <button class="nav prev" aria-label="previous">‹</button>
+          <button class="nav next" aria-label="next">›</button>
+          <div class="dots"></div>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">November 12</div>
+        <div class="entry-body">
+          <p>Dear diary,</p>
+          <p>I've never met a group more at risk of breaking out into song than the Frenchies. We could be hiking, resting, or at the dining table, someone initiates a tune and the situation devolves into what can only be described as a cohesive unchoreographed musical scramble. There are the early adopters that join in right away, the laggards that need time to figure out the words, and those that are left behind.</p>
+          <p>Whatever song takes over the group it is invariably in French, but I've found room to contribute through aggressive beatboxing. The bass boosted French occapella never fails to end in laughter.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">November 18</div>
+        <div class="entry-body">
+          <p>Dear diary,</p>
+          <p>Muse visually looks like Allison from the breakfast club; she has shoulder length black hair and hides her face behind a bulky scarf. She speaks only French, so we didn't talk at first. She gave me the impression she was that she was quiet and shy. Then I had the privilege of seeing one of her signature "Muse anecdotes".</p>
+          <p>You'd think a story told only in French wouldn't be at all engaging to an English listener, and you'd be right, normally. As she starts talking she talks slow as if she's piecing together in her head what she's trying to say. Then all of a sudden her eyes light up, cadence quickens as if she had just switched to a higher gear, and she just accelerates until she is speaking so fast it would make Eminem blush. Her hands join the party to add gestural context for whatever is fighting its way through her mouth, and it all just builds until her story reaches a crescendo as she's waving her hands in the air and making dinosaur noises.</p>
+          <p>Everyone else is laughing and I, with an intense curiosity ask one of the others to fill me in. Often the recap merely adds to my confusion, like "oh, muse says in high school, she wasn't a very good student". I'm just left there to wonder how the dinosaur noises came into play. But I find the whole thing more charming and demonstrating of character, unanswered.</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <figure class="photo">
+          <img data-src="images/70_5.jpg" src="images/70_5.jpg" alt="">
+        </figure>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">November 19</div>
+        <div class="entry-body">
+          <p>Dear diary,</p>
+          <p>Today I was walking past a field and started smelling funky cheese. I thought "huh, that field smells like cheese". Then 10 minutes later I smelled it again, and I was like "dang, this place also smells like cheese". And then ten minutes later I smelled it again, and realized that I was the thing that smelled like cheese. I sniffed everything and couldn't find the source; at my next stop I'm gonna do a full fumigation.</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <figure class="photo">
+          <img data-src="images/55.jpg" src="images/55.jpg" alt="">
+        </figure>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">November 21</div>
+        <div class="entry-body">
+          <p>Dear diary,</p>
+          <p>I emerged from the albergue to a dark and frigid morning. My breath spun phantasms in the air as the sun arose timidly over a vast cornfield that smelt of feces. On any other day I would've thought nothing of it, but after the cheese fiasco I am worried I have shit my pants.</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <figure class="photo">
+          <img data-src="images/56.jpg" src="images/56.jpg" alt="">
+        </figure>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">November 22</div>
+        <div class="entry-body">
+          <p>Dear diary,</p>
+          <p>There was entirely too much pesto in the ravioli we ate, in secret, huddled on a bed, 20 minutes after we were supposed to be asleep. The albergue owner (humorless fellow) would probably kick us out on the street if he found us in our room like this, and our fear of being caught caused us great childish giddy. The whole pot coagulated into a pesto-ravioli concrete that we scooped into our mouths, straight out of the pot, by the heaping fork load.</p>
+          <p>We had already been told to "shut the fuck up" by a Lithuanian man*, but one cannot help but laugh at the whole scene.</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <figure class="photo">
+          <img data-src="images/65.jpg" src="images/65.jpg" alt="the ravioli incident">
+          <figcaption>the ravioli incident</figcaption>
+        </figure>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">November 24</div>
+        <div class="entry-body">
+          <p>Dear Diary,</p>
+          <p>Manon: (from the bathroom stall next to mine) "HELLPP!!! *bang bang bang* "HELLP!"</p>
+          <p>Me: (furiously wiping) "I'm still shitting!!"</p>
+          <p>It was not even 8am when our day reached its peak intensity. We all woke up around with precious little time before we had to leave the albergue. We packed our bags and all went to the bathroom at the same time. I went for the stall on the left and Manon went to the right.</p>
+          <p>Last night I used the right stall and was horrified to discover (after I had closed the door) that the handle to open it was falling out. It took me enough time to figure out how to open the door to come to terms with the fact that I might be spending the rest of the night in that bathroom.</p>
+          <p>So when Manon went in there I warned her, but added "don't worry I can open it from the outside when you're done". What I had not considered was that I was about to undergo the most dramatic bowel movement of the Camino, and it would take longer than whatever Manon got up to in her stall.</p>
+          <p>*cut back to opening scene*</p>
+          <p>I'm furiously wiping when I hear footsteps coming into the bathroom from outside and Manon's panic subside. I later learned to my horror and amusement that the Albergue owner had heard the racket and had run to the rescue, scared that one of his guests was actively dying in the bathroom.</p>
+          <p>That man was an angel and didn't deserve the panic so early.</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <div class="carousel" data-carousel>
+          <div class="track">
+            <div class="slide active"><img data-src="images/57.jpg" src="images/57.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/58.jpg" src="images/58.jpg" alt=""></div>
+          </div>
+          <button class="nav prev" aria-label="previous">‹</button>
+          <button class="nav next" aria-label="next">›</button>
+          <div class="dots"></div>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">November 25</div>
+        <div class="entry-body">
+          <p>Dear Diary,</p>
+          <p>Last night in my dreams I received a text from Jack Becker:</p>
+          <p>"Does your journey have meaning?"</p>
+          <p>I was having a lucid dream, meaning I knew I was dreaming and had control over my thoughts and I remember thinking these things, in this order:</p>
+          <p>1. Damn, what an insightful question</p>
+          <p>2. apparently in my subconscious I view jack as this bastion of wisdom, who raw dog texts people these incredible questions</p>
+          <p>3. Then I remembered the last text I got from Jack which asked if I remembered seeing Calvin's penis. This is hard to reconcile with thought number 2</p>
+          <p>4. Let me think of my response</p>
+          <p>I told a couple people about my plans to walk the Camino, and I was met with two responses. Some people thought it was a fantastic idea, that it was going to be a transformative experience, and some people said "so you're going to be walking for 1 month? What are you going to be doing that whole time?". I dubbed the latter group "people who don't get it", but when I realized a large part of myself didn't get it either. Before embarking I had no idea why I was going, I didn't really know anything about it, and I've always seen hiking as a now means to an end.</p>
+          <p>My first three days on the Camino were emblematic of my journey. The first day was exciting and filled with a sense of adventure. I hiked really quickly, met some colorful people, and got to the first albergue before 1:00pm. During this day I learned of my ability to read a book while walking and saw it as the perfect way not to waste my time on the Camino.</p>
+          <p>Day 2 kicked my ass. I reached the second stop before 1:00pm again and decided to skip it to go 26 miles straight to Pamplona. By the time I got there it was dark out, my feet were in shambles, and I was chanting "todo es dolor" (everything is pain) under my breath as I limped to the albergue.</p>
+          <p>I had no expectations for Day 3. I half expected to take a full rest day after the travesty the day before, but I woke up feeling fantastic. I decided to start walking without a set destination and what ensued was perhaps the best day of the whole trip. I made frequent stops to enjoy the view. Enjoyed a Diet Coke on a park bench. Listened to music, and let my thoughts wander. I left behind the rush of the days before, and what was left really helped me understand what the Camino was about. I reached my albergue after the sun had set, but I met the Frenchies, who I'd walk with for the next month.</p>
+          <p>Days later, I read this quote scribbled in spray paint on a highway overpass. It read (in Spanish):</p>
+          <p>"Traveler, there is no path. The path is made by walking."</p>
+        </div>
+      </div>
+
+      <!-- scroll buffer between the Jack entry and the punchline photo -->
+      <div class="entry-media">
+        <figure class="photo">
+          <img data-src="images/59.jpg" src="images/59.jpg" alt="">
+        </figure>
+      </div>
+
+      <div class="entry-media">
+        <figure class="photo">
+          <img data-src="images/63_5.jpg" src="images/63_5.jpg" alt="the last text I got from Jack">
+          <figcaption>the last text I got from Jack</figcaption>
+        </figure>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">November 28</div>
+        <div class="entry-body">
+          <p>Dear diary,</p>
+          <p>Today I woke up on a hill shrouded in mist. It was overlooking a valley carpeted by the clouds which stretched out towards the horizon and blended seamlessly into a cream colored sky. Walking through the forest and past a waterfall I found myself at a hilltop cafe my fellow travelers and I call the Cafe of Giants. An enormous 1 year old dog greets me at the door, I order the biggest tortilla and chocolate cake of the Camino, and sit by a fireplace where the owner loads in a log the size of my torso. I read a book about the Consumer Price Index [<em>Who is Government</em> — Michael Lewis] sitting in an environment that laughs at such trivialities.</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <div class="carousel" data-carousel>
+          <div class="track">
+            <div class="slide active"><img data-src="images/60.jpg" src="images/60.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/61.jpg" src="images/61.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/62.jpg" src="images/62.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/63.jpg" src="images/63.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/64.jpg" src="images/64.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/64_5.jpg" src="images/64_5.jpg" alt=""></div>
+          </div>
+          <button class="nav prev" aria-label="previous">‹</button>
+          <button class="nav next" aria-label="next">›</button>
+          <div class="dots"></div>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">December 2</div>
+        <div class="entry-body">
+          <p>Dear diary,</p>
+          <p>I have been told I have an occasionally violent liveliness to the way I sleep. It is something that has ailed my brother through childhood, because we shared a room, and one in particularly… dramatic occasion, traumatized my college roommates, although that is a story for another day.</p>
+          <p>On day 2 of the Camino rumor spread around of a man moving about at night: that man was me.</p>
+          <p>On another occasion I awoke during a particular dream where I happened to be throwing something. When I came to it I realized that I had actually picked up my pillow in real life, and tossed it across the room, "oh shit" I giggled half awake.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">December 3</div>
+        <div class="entry-body">
+          <p>Dear diary,</p>
+          <p>Me: "DAAAYUMM! What the fuck happened to you?"</p>
+          <p>*no response, Micah slumps into his seat, eyes glossed over, eyelids half shut, incredibly pale*</p>
+          <p>I hadn't been gone 2 minutes to ask the waiter for a bowl for the cereal I had brought to the restaurant, and I come back to see Micah, completely despondent as if he just shot up heroin.</p>
+          <p>Me: "hey, you good?" *no response*</p>
+          <p>*everyone else chatting, seeming not to notice*</p>
+          <p>Me: "Hey guys, what the hell happened to Micah?"</p>
+          <p>"Oh he just smoked some weed"</p>
+          <p>Me: "Nah, man this isn't right, he's completely unresponsive."</p>
+          <p>"It's fine it was just some strong weed"</p>
+          <p>Me: "Have you ever seen someone smoke weed? This ain't it. It's unnatural."</p>
+          <p>*people laugh it off and continue chatting*</p>
+          <p>Micah is completely still, pale, and staring directly at me with the facial expression of a corpse. I shrug, and with great unease, pour my bowl of cereal.</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <div class="carousel" data-carousel>
+          <div class="track">
+            <div class="slide active"><img data-src="photos/Micah's apparent OD.JPEG" src="photos/Micah's apparent OD.JPEG" alt="Micah's apparent OD"></div>
+            <div class="slide"><img data-src="photos/Micah's apparent OD - 2.JPEG" src="photos/Micah's apparent OD - 2.JPEG" alt="Micah's apparent OD"></div>
+          </div>
+          <button class="nav prev" aria-label="previous">‹</button>
+          <button class="nav next" aria-label="next">›</button>
+          <div class="dots"></div>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">December 3 (later)</div>
+        <div class="entry-body">
+          <p>Dear diary,</p>
+          <p>People are too damn friendly out here. Sometimes I'm stumbling around a city, looking for my friends who went into one of the 10-thousand different cafes, and a friendly local will see a lost pilgrim and try to direct me back to the Camino. I don't have the Spanish required to tell them I'm actually just looking for my friends, and I don't have the heart to wave them off. So often I let them guide me, start walking until they are out of sight, and then double back to continue my search.</p>
+        </div>
+      </div>
+
+      <div class="entry-media">
+        <div class="carousel" data-carousel>
+          <div class="track">
+            <div class="slide active"><img data-src="images/66.jpg" src="images/66.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/67.jpg" src="images/67.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/68.jpg" src="images/68.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/69.jpg" src="images/69.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/70.jpg" src="images/70.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/71.jpg" src="images/71.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/72.jpg" src="images/72.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/73.jpg" src="images/73.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/74.jpg" src="images/74.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/74_5.jpg" src="images/74_5.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/75.jpg" src="images/75.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/75_5.jpg" src="images/75_5.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/76.jpg" src="images/76.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/76_5.jpg" src="images/76_5.jpg" alt=""></div>
+            <div class="slide"><img data-src="images/77.jpg" src="images/77.jpg" alt=""></div>
+          </div>
+          <button class="nav prev" aria-label="previous">‹</button>
+          <button class="nav next" aria-label="next">›</button>
+          <div class="dots"></div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <footer>
+    Adam Tadros
+  </footer>
+
+</main>
+
+<!-- lightbox -->
+<div class="lightbox" id="lightbox" role="dialog" aria-hidden="true">
+  <span class="close" id="lb-close" aria-label="close">close</span>
+  <div class="stage">
+    <img id="lb-img" alt="">
+    <div class="caption" id="lb-cap"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  // ---- map ----
+  const stops = [
+    {name:"Los Altos, CA",      coords:[37.3852,-122.1141]},
+    {name:"Grand Canyon",       coords:[36.1069,-112.1129]},
+    {name:"Boulder, CO",        coords:[40.0150,-105.2705]},
+    {name:"Olympic NP, WA",     coords:[47.8021,-123.6044]},
+    {name:"London",             coords:[51.5074,-0.1278]},
+    {name:"Paris",              coords:[48.8566,2.3522]},
+    {name:"Morocco",            coords:[31.7917,-7.0926]},
+    {name:"Egypt",              coords:[26.8206,30.8025]},
+    {name:"Edinburgh",          coords:[55.9533,-3.1883]},
+    {name:"Dublin",             coords:[53.3498,-6.2603]},
+    {name:"Chulilla, Spain",    coords:[39.6539,-0.8900]},
+    {name:"Béziers, France",    coords:[43.3442,3.2158]},
+    {name:"Camino de Santiago", coords:[42.8782,-8.5448]}
+  ];
+
+  const map = L.map('map', {scrollWheelZoom:false, zoomControl:true}).setView([42,-20], 2);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19, attribution: ''
+  }).addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19, attribution: '&copy; OSM &copy; CARTO'
+  }).addTo(map);
+
+  const dot = L.divIcon({
+    className:'dot',
+    html:'<div style="width:8px;height:8px;border-radius:50%;background:#1a1814;border:1px solid #fbf8f1"></div>',
+    iconSize:[8,8], iconAnchor:[4,4]
+  });
+
+  const coords = [];
+  stops.forEach(s => {
+    coords.push(s.coords);
+    const m = L.marker(s.coords, {icon:dot}).addTo(map);
+    m.bindPopup(`<div style="font-family:'EB Garamond',Georgia,serif;font-size:14px;font-style:italic">${s.name}</div>`);
+  });
+  map.fitBounds(coords, {padding:[30,30]});
+
+  // ---- carousels ----
+  document.querySelectorAll('[data-carousel]').forEach(car => {
+    const slides = car.querySelectorAll('.slide');
+    const prev = car.querySelector('.prev');
+    const next = car.querySelector('.next');
+    const dotsWrap = car.querySelector('.dots');
+    let idx = 0;
+
+    slides.forEach((_, i) => {
+      const b = document.createElement('button');
+      b.className = 'dot' + (i === 0 ? ' active' : '');
+      b.setAttribute('aria-label', 'photo ' + (i+1));
+      b.addEventListener('click', () => go(i));
+      dotsWrap.appendChild(b);
+    });
+
+    function go(n){
+      slides[idx].classList.remove('active');
+      dotsWrap.children[idx].classList.remove('active');
+      idx = (n + slides.length) % slides.length;
+      slides[idx].classList.add('active');
+      dotsWrap.children[idx].classList.add('active');
+    }
+    prev.addEventListener('click', () => go(idx - 1));
+    next.addEventListener('click', () => go(idx + 1));
+
+    car.setAttribute('tabindex','0');
+    car.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft')  go(idx - 1);
+      if (e.key === 'ArrowRight') go(idx + 1);
+    });
+  });
+
+  // ---- lightbox (click any entry-page image to enlarge) ----
+  const lb = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lb-img');
+  const lbCap = document.getElementById('lb-cap');
+  const lbClose = document.getElementById('lb-close');
+
+  function openLightbox(src, caption){
+    lbImg.src = src;
+    lbCap.textContent = caption || '';
+    lbCap.style.display = caption ? '' : 'none';
+    lb.classList.add('open');
+    lb.setAttribute('aria-hidden','false');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeLightbox(){
+    lb.classList.remove('open');
+    lb.setAttribute('aria-hidden','true');
+    document.body.style.overflow = '';
+  }
+  lbClose.addEventListener('click', closeLightbox);
+  lb.addEventListener('click', (e) => {
+    if (e.target === lb || e.target === lbImg || e.target === lbCap) closeLightbox();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (lb.classList.contains('open') && e.key === 'Escape') closeLightbox();
+  });
+
+  // Standalone photos: click to enlarge. Caption comes from sibling <figcaption>.
+  document.querySelectorAll('.photo img').forEach(img => {
+    img.addEventListener('click', () => {
+      const fig = img.closest('figure');
+      const cap = fig && fig.querySelector('figcaption');
+      openLightbox(img.getAttribute('data-src') || img.src, cap ? cap.textContent : '');
+    });
+  });
+
+  // Carousel slides: click to enlarge the active slide.
+  document.querySelectorAll('.carousel .slide img').forEach(img => {
+    img.addEventListener('click', () => {
+      openLightbox(img.getAttribute('data-src') || img.src, '');
+    });
+  });
+</script>
+
+</body>
+</html>

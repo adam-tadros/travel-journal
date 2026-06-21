@@ -1,0 +1,15 @@
+# Firebase
+.firebase/
+
+# Old version of the site (previous build, node_modules, etc.)
+_old/
+
+# Dependencies
+node_modules/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
